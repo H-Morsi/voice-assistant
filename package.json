@@ -1,0 +1,57 @@
+{
+  "name": "voice-assistant",
+  "version": "1.0.0",
+  "description": "Screen-aware voice assistant like Comet/Perplexity - sees screen, hears voice, live chat, delegates to agents",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:build": "vite build && electron-builder",
+    "electron:start": "electron ."
+  },
+  "build": {
+    "appId": "com.voiceassistant.app",
+    "productName": "Voice Assistant",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "dependencies": {
+    "@deepgram/sdk": "^3.3.0",
+    "jspdf": "^2.5.1",
+    "lucide-react": "^0.400.0",
+    "openai": "^4.40.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.0",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.19",
+    "vite": "^5.2.0",
+    "wait-on": "^7.2.0"
+  }
+}
