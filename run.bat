@@ -3,7 +3,7 @@ setlocal EnableDelayedExpansion
 
 title Voice Assistant - Launcher
 color 0B
-mode con: cols=70 lines=25
+mode con: cols=80 lines=30
 
 echo.
 echo  ============================================================
@@ -11,9 +11,20 @@ echo   Voice Assistant - Launcher
 echo  ============================================================
 echo.
 
-REM ------------------------------------------------------------
-REM Find the built app (portable exe preferred, then installed)
-REM ------------------------------------------------------------
+REM ============================================================
+REM Helper: Keep window open on exit
+REM ============================================================
+:KEEP_OPEN
+echo.
+echo  ------------------------------------------------------------
+echo  Press ANY KEY to close this window...
+echo  ------------------------------------------------------------
+pause >nul
+exit /b %1
+
+REM ============================================================
+REM Find the built app
+REM ============================================================
 set "APP_EXE="
 
 REM 1. Portable exe from electron-builder (NSIS)
@@ -29,24 +40,24 @@ if not defined APP_EXE (
     )
 )
 
-REM 3. Portable from different electron-builder config
+REM 3. Alternate portable name
 if not defined APP_EXE (
     if exist "dist-electron\Voice Assistant.exe" (
         set "APP_EXE=dist-electron\Voice Assistant.exe"
     )
 )
 
-REM 4. Check for unpacked (dev) build
+REM 4. Unpacked (dev) build
 if not defined APP_EXE (
     if exist "dist-electron\win-unpacked\Voice Assistant.exe" (
         set "APP_EXE=dist-electron\win-unpacked\Voice Assistant.exe"
     )
 )
 
-REM 5. Linux build fallback (shouldn't happen on Windows)
+REM 5. Check current folder (in case copied)
 if not defined APP_EXE (
-    if exist "dist-electron\linux-unpacked\voice-assistant" (
-        set "APP_EXE=dist-electron\linux-unpacked\voice-assistant"
+    if exist "Voice Assistant.exe" (
+        set "APP_EXE=Voice Assistant.exe"
     )
 )
 
@@ -60,6 +71,7 @@ if not defined APP_EXE (
     echo   dist-electron\Voice Assistant.exe
     echo   %LOCALAPPDATA%\Voice Assistant\Voice Assistant.exe
     echo   dist-electron\win-unpacked\Voice Assistant.exe
+    echo   Voice Assistant.exe
     echo.
     echo Current folder: %CD%
     echo.
@@ -69,8 +81,7 @@ if not defined APP_EXE (
         call INSTALL.bat
         goto :eof
     )
-    pause
-    exit /b 1
+    goto KEEP_OPEN 1
 )
 
 echo [OK] Found app: %APP_EXE%
@@ -80,6 +91,15 @@ echo.
 
 start "" "%APP_EXE%"
 
+if %errorlevel% neq 0 (
+    echo [ERROR] Failed to launch app!
+    echo.
+    echo Try running the exe directly:
+    echo   %APP_EXE%
+    goto KEEP_OPEN 1
+)
+
 echo App launched! Check your taskbar / system tray.
 echo.
 timeout /t 2 >nul
+goto KEEP_OPEN 0

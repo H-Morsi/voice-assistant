@@ -3,32 +3,41 @@ setlocal EnableDelayedExpansion
 
 title Voice Assistant - One-Click Installer
 color 0A
-mode con: cols=80 lines=35 lines=85
+mode con: cols=90 lines=45
 
 echo.
 echo  ============================================================
 echo   Voice Assistant - One-Click Installer for Windows
 echo  ============================================================
 echo.
-echo  This will install Node.js dependencies, build the app,
-echo  and create a Windows installer (.exe).
+echo  This will install dependencies, build the app, and create
+echo  a Windows installer (.exe).
 echo.
 echo  Estimated time: 2-5 minutes (first run downloads ~200MB)
 echo.
 
-REM ------------------------------------------------------------
-REM Helper: Check if command exists
-REM ------------------------------------------------------------
+REM ============================================================
+REM Helper: Keep window open on exit (success or failure)
+REM ============================================================
+:KEEP_OPEN
+echo.
+echo  ------------------------------------------------------------
+echo  Press ANY KEY to close this window...
+echo  ------------------------------------------------------------
+pause >nul
+exit /b %1
+
+REM ============================================================
+REM Find Node.js and npm (handles PATH issues)
+REM ============================================================
 set "NODE_CMD="
 set "NPM_CMD="
 set "NODE_VERSION="
 
-REM Try to find node.exe in common locations
 where node >nul 2>&1
 if %errorlevel% equ 0 (
     set "NODE_CMD=node"
 ) else (
-    REM Check common install paths
     if exist "%ProgramFiles%\nodejs\node.exe" set "NODE_CMD=%ProgramFiles%\nodejs\node.exe"
     if exist "%ProgramFiles(x86)%\nodejs\node.exe" set "NODE_CMD=%ProgramFiles(x86)%\nodejs\node.exe"
     if exist "%LocalAppData%\Programs\nodejs\node.exe" set "NODE_CMD=%LocalAppData%\Programs\nodejs\node.exe"
@@ -36,7 +45,6 @@ if %errorlevel% equ 0 (
     if exist "%SystemDrive%\ProgramData\chocolatey\bin\node.exe" set "NODE_CMD=%SystemDrive%\ProgramData\chocolatey\bin\node.exe"
 )
 
-REM Same for npm
 where npm >nul 2>&1
 if %errorlevel% equ 0 (
     set "NPM_CMD=npm"
@@ -48,63 +56,52 @@ if %errorlevel% equ 0 (
     if exist "%SystemDrive%\ProgramData\chocolatey\bin\npm.cmd" set "NPM_CMD=%SystemDrive%\ProgramData\chocolatey\bin\npm.cmd"
 )
 
-REM ------------------------------------------------------------
+REM ============================================================
 REM Check Node.js
-REM ------------------------------------------------------------
+REM ============================================================
 if not defined NODE_CMD (
-    echo [ERROR] Node.js is NOT installed or not in PATH.
+    echo [ERROR] Node.js is NOT installed or not found.
     echo.
     echo  Node.js 18+ is REQUIRED to build this app.
     echo.
-    echo  Would you like me to open the download page for you?
+    echo  Would you like me to open the download page?
     echo.
     choice /C YN /M "Open Node.js download page? (Y/N): "
     if %errorlevel% equ 1 (
         start "" "https://nodejs.org/en/download/"
         echo.
-        echo  Page opened. Please install Node.js (LTS version recommended),
-        echo  then run this installer again.
+        echo  Page opened in browser.
+        echo  Please install Node.js (LTS version), then run this installer AGAIN.
     ) else (
         echo.
-        echo  Download Node.js from: https://nodejs.org
+        echo  Download from: https://nodejs.org
         echo  Then run this installer again.
     )
-    echo.
-    pause
-    exit /b 1
+    goto KEEP_OPEN 1
 )
 
-REM Get version
 for /f "tokens=*" %%v in ('"%NODE_CMD%" --version') do set "NODE_VERSION=%%v"
 echo [OK] Node.js found: %NODE_VERSION%
 echo        Location: %NODE_CMD%
 echo.
 
-REM Check minimum version (18+)
 for /f "tokens=2 delims=v." %%a in ("%NODE_VERSION%") do set "NODE_MAJOR=%%a"
 if %NODE_MAJOR% LSS 18 (
-    echo [WARNING] Node.js version %NODE_VERSION% detected.
-    echo           Version 18+ is recommended for best compatibility.
+    echo [WARNING] Node.js %NODE_VERSION% detected. Version 18+ recommended.
     echo.
     choice /C YN /M "Continue anyway? (Y/N): "
-    if %errorlevel% neq 1 (
-        echo Aborted.
-        pause
-        exit /b 1
-    )
+    if %errorlevel% neq 1 goto KEEP_OPEN 1
 )
 
-REM ------------------------------------------------------------
+REM ============================================================
 REM Check npm
-REM ------------------------------------------------------------
+REM ============================================================
 if not defined NPM_CMD (
-    echo [ERROR] npm not found. This usually means Node.js install is incomplete.
+    echo [ERROR] npm not found. Node.js install may be incomplete.
     echo.
-    echo  Try reinstalling Node.js from: https://nodejs.org
-    echo  Make sure to check "npm" during installation.
-    echo.
-    pause
-    exit /b 1
+    echo  Reinstall Node.js from https://nodejs.org
+    echo  Make sure "npm" is checked during installation.
+    goto KEEP_OPEN 1
 )
 
 for /f "tokens=*" %%v in ('"%NPM_CMD%" --version') do set "NPM_VERSION=%%v"
@@ -112,25 +109,23 @@ echo [OK] npm found: %NPM_VERSION%
 echo        Location: %NPM_CMD%
 echo.
 
-REM ------------------------------------------------------------
-REM Verify we're in the right directory (has package.json)
-REM ------------------------------------------------------------
+REM ============================================================
+REM Verify package.json exists
+REM ============================================================
 if not exist "package.json" (
     echo [ERROR] package.json not found!
     echo.
-    echo  Please run this installer from the VOICE-ASSISTANT folder
-    echo  (the folder containing package.json).
-    echo.
-    pause
-    exit /b 1
+    echo  Run this installer from the VOICE-ASSISTANT folder
+    echo  (the folder that contains package.json).
+    goto KEEP_OPEN 1
 )
 
-echo [OK] Found package.json in current folder.
+echo [OK] Found package.json in: %CD%
 echo.
 
-REM ------------------------------------------------------------
-REM Install dependencies
-REM ------------------------------------------------------------
+REM ============================================================
+REM STEP 1: Install dependencies
+REM ============================================================
 echo [STEP 1/3] Installing dependencies...
 echo            (First run downloads ~200MB - please wait)
 echo.
@@ -140,21 +135,20 @@ if %errorlevel% neq 0 (
     echo [ERROR] npm install failed!
     echo.
     echo  Common fixes:
-    echo   - Check internet connection
-    echo   - Run as Administrator (right-click -> Run as administrator)
-    echo   - Temporarily disable antivirus
-    echo   - Try: %NPM_CMD% cache clean --force
-    echo.
-    pause
-    exit /b 1
+    echo   1. Check internet connection
+    echo   2. Right-click this file -> "Run as administrator"
+    echo   3. Temporarily disable antivirus
+    echo   4. Run: "%NPM_CMD%" cache clean --force
+    echo   5. Delete node_modules folder and try again
+    goto KEEP_OPEN 1
 )
 echo.
 echo [OK] Dependencies installed.
 echo.
 
-REM ------------------------------------------------------------
-REM Build production app
-REM ------------------------------------------------------------
+REM ============================================================
+REM STEP 2: Build production app
+REM ============================================================
 echo [STEP 2/3] Building production app...
 echo.
 "%NPM_CMD%" run build
@@ -162,16 +156,15 @@ if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Build failed!
     echo.
-    pause
-    exit /b 1
+    goto KEEP_OPEN 1
 )
 echo.
 echo [OK] Build complete.
 echo.
 
-REM ------------------------------------------------------------
-REM Build Windows installer
-REM ------------------------------------------------------------
+REM ============================================================
+REM STEP 3: Build Windows installer
+REM ============================================================
 echo [STEP 3/3] Building Windows installer (.exe)...
 echo            This takes 1-2 minutes...
 echo.
@@ -180,17 +173,17 @@ if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Electron build failed!
     echo.
-    echo  This usually means a native module failed to compile.
-    echo  Try running: %NPM_CMD% install --ignore-scripts
-    echo  Then run this installer again.
-    echo.
-    pause
-    exit /b 1
+    echo  Common fixes:
+    echo   1. Run: "%NPM_CMD%" install --ignore-scripts
+    echo   2. Delete node_modules and dist-electron folders, try again
+    echo   3. Make sure you have Visual Studio Build Tools installed
+    echo      (for native modules): https://visualstudio.microsoft.com/downloads/
+    goto KEEP_OPEN 1
 )
 
-REM ------------------------------------------------------------
-REM Success!
-REM ------------------------------------------------------------
+REM ============================================================
+REM SUCCESS!
+REM ============================================================
 echo.
 echo  ============================================================
 echo   [SUCCESS] Installation Complete!
@@ -200,15 +193,11 @@ echo  Output files are in:  dist-electron\
 echo.
 echo  Look for:
 echo   - Voice Assistant Setup 1.0.0.exe   (full installer)
-echo   - Voice Assistant-1.0.0.exe         (portable, no install needed)
+echo   - Voice Assistant-1.0.0.exe         (portable, no install)
 echo.
-echo  To run the app later, just double-click:
-echo   RUN.bat
-echo.
-echo  Or run the portable exe directly from dist-electron\
+echo  To run the app later, double-click:  RUN.bat
 echo.
 
-REM Auto-launch option
 choice /C YN /M "Launch the app now? (Y/N): "
 if %errorlevel% equ 1 (
     echo.
@@ -216,8 +205,7 @@ if %errorlevel% equ 1 (
     call RUN.bat
 ) else (
     echo.
-    echo Done. Run RUN.bat anytime to start the app.
+    echo Done. Double-click RUN.bat anytime to start.
 )
 
-echo.
-pause
+goto KEEP_OPEN 0
